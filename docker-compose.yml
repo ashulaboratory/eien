@@ -1,0 +1,54 @@
+# Eien ローカル開発環境
+# 起動: docker compose up -d
+# 停止: docker compose down
+# 状態確認: docker compose ps
+# ログ表示: docker compose logs -f
+
+services:
+  # ==========================================
+  # PostgreSQL: アプリケーションデータの保存先
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: eien-postgres
+    restart: unless-stopped
+    environment:
+      # 初回起動時にこの設定でDBが自動作成される
+      POSTGRES_DB: eien
+      POSTGRES_USER: eien
+      POSTGRES_PASSWORD: eien_dev_password
+    ports:
+      # ホストの5432 → コンテナの5432
+      # ※ 既存MySQL(3308)と被らないのでOK
+      - "5432:5432"
+    volumes:
+      # データを永続化する名前付きボリューム
+      # コンテナを消してもDBデータは残る
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # DBが応答可能か10秒ごとにチェック
+      test: ["CMD-SHELL", "pg_isready -U eien -d eien"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # Mailhog: 開発用SMTPサーバ (メール送信のテスト)
+  # 本物のメールは送らない。Web UIで送信内容を確認できる
+  # ==========================================
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: eien-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP: バックエンドからメール送信時に使う
+      - "8025:8025"  # Web UI: ブラウザで http://localhost:8025
+
+# ==========================================
+# 名前付きボリューム
+# `docker volume ls` で確認できる
+# 削除: docker volume rm sns開発プロジェクト_postgres_data
+# ==========================================
+volumes:
+  postgres_data:
+    driver: local
