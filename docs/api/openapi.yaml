@@ -1,0 +1,340 @@
+openapi: 3.0.3
+info:
+  title: Eien API
+  version: 0.1.0
+  description: |
+    Eien（永遠の仲間とのSNS）の REST API 仕様書。
+    本ファイルは設計フェーズの初期スタブであり、実装と並行して拡充する。
+
+servers:
+  - url: http://localhost:8080
+    description: ローカル開発
+  - url: https://eien.fly.dev
+    description: 本番（仮）
+
+tags:
+  - name: auth
+    description: 認証
+  - name: users
+    description: ユーザー
+  - name: groups
+    description: グループ
+  - name: invites
+    description: 招待
+  - name: posts
+    description: 投稿
+  - name: reactions
+    description: リアクション
+  - name: replies
+    description: 返信
+  - name: birthdays
+    description: 誕生日
+  - name: images
+    description: 画像
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session_id
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: メールアドレスの形式が正しくありません
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  reason:
+                    type: string
+
+    User:
+      type: object
+      required: [id, email, birthday]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        birthday:
+          type: string
+          format: date
+
+    Group:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    GroupMember:
+      type: object
+      required: [user_id, display_name]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        icon_url:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [admin, member]
+
+    Post:
+      type: object
+      required: [id, group, author, body, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        group:
+          $ref: '#/components/schemas/Group'
+        author:
+          $ref: '#/components/schemas/GroupMember'
+        body:
+          type: string
+        images:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              sort_order:
+                type: integer
+        reactions:
+          type: object
+          additionalProperties:
+            type: integer
+        reply_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+  responses:
+    Unauthorized:
+      description: 未ログイン
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: 権限なし
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: 存在しない
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+# 全エンドポイントは原則 cookieAuth が必要
+security:
+  - cookieAuth: []
+
+paths:
+  /api/auth/register:
+    post:
+      tags: [auth]
+      summary: 新規登録
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, birthday]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                birthday:
+                  type: string
+                  format: date
+      responses:
+        '201':
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '409':
+          description: メールアドレス重複
+
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: ログイン
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: ログイン成功（Set-Cookieでsession_idを発行）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      summary: ログアウト
+      responses:
+        '204':
+          description: 成功
+
+  /api/auth/me:
+    get:
+      tags: [auth]
+      summary: 現在のユーザー情報
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/timeline:
+    get:
+      tags: [posts]
+      summary: タイムライン取得（全所属グループの投稿）
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Post'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /api/groups/{groupId}/posts:
+    post:
+      tags: [posts]
+      summary: 投稿作成
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body:
+                  type: string
+                  maxLength: 1000
+                image_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '201':
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/birthdays/today:
+    get:
+      tags: [birthdays]
+      summary: 今日の誕生日メンバー
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GroupMember'
+
+# TODO: 残りのエンドポイント（招待、リアクション、返信、画像、チャット）は実装と並行して追加
