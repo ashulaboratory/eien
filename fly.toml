@@ -1,0 +1,30 @@
+# Fly.io 設定
+# 注: app 名は Fly 全体でユニークである必要があります。
+# `eien` がもし取られていたら `eien-ashulaboratory` などに変更してください。
+
+app = "eien"
+primary_region = "nrt"  # 東京
+
+[build]
+  dockerfile = "backend/Dockerfile"
+
+[env]
+  PORT = "8080"
+  # 本番用の公開URL。デプロイ後に実際のドメインに合わせて fly secrets で上書き推奨
+  # EIEN_PUBLIC_URL = "https://eien.fly.dev"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false   # スケジューラを確実に動かすため
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256
+
+[[mounts]]
+  source = "eien_uploads"
+  destination = "/app/uploads"

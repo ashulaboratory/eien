@@ -6,11 +6,43 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type Querier interface {
+	AddGroupMember(ctx context.Context, arg AddGroupMemberParams) (GroupMember, error)
+	AddPostImage(ctx context.Context, arg AddPostImageParams) (PostImage, error)
+	CreateEmailLog(ctx context.Context, arg CreateEmailLogParams) (EmailLog, error)
+	CreateGroup(ctx context.Context, arg CreateGroupParams) (Group, error)
+	CreateInviteLink(ctx context.Context, arg CreateInviteLinkParams) (InviteLink, error)
+	CreatePost(ctx context.Context, arg CreatePostParams) (Post, error)
+	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteExpiredInviteLinks(ctx context.Context) error
+	DeleteExpiredSessions(ctx context.Context) error
+	DeleteSession(ctx context.Context, id string) error
+	GetGroup(ctx context.Context, id uuid.UUID) (Group, error)
+	GetGroupMember(ctx context.Context, arg GetGroupMemberParams) (GroupMember, error)
+	GetInviteLink(ctx context.Context, token string) (InviteLink, error)
+	GetPost(ctx context.Context, id uuid.UUID) (Post, error)
+	GetSession(ctx context.Context, id string) (Session, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	HasSentEmailToday(ctx context.Context, arg HasSentEmailTodayParams) (bool, error)
+	IncrementInviteLinkUses(ctx context.Context, token string) error
+	IsGroupMember(ctx context.Context, arg IsGroupMemberParams) (bool, error)
+	ListGroupMatesForUser(ctx context.Context, userID uuid.UUID) ([]User, error)
+	ListGroupMembers(ctx context.Context, groupID uuid.UUID) ([]GroupMember, error)
+	ListGroupPosts(ctx context.Context, arg ListGroupPostsParams) ([]ListGroupPostsRow, error)
+	ListPostImages(ctx context.Context, postID uuid.UUID) ([]PostImage, error)
+	ListTimeline(ctx context.Context, arg ListTimelineParams) ([]ListTimelineRow, error)
+	ListTodayBirthdayUsersJST(ctx context.Context) ([]User, error)
+	ListUserGroups(ctx context.Context, userID uuid.UUID) ([]ListUserGroupsRow, error)
+	MarkEmailLogFailed(ctx context.Context, arg MarkEmailLogFailedParams) error
+	MarkEmailLogSent(ctx context.Context, id uuid.UUID) error
+	SoftDeletePost(ctx context.Context, arg SoftDeletePostParams) error
+	UpdateGroupMemberProfile(ctx context.Context, arg UpdateGroupMemberProfileParams) (GroupMember, error)
 }
 
 var _ Querier = (*Queries)(nil)

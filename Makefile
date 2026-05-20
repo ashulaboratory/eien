@@ -85,3 +85,7 @@ backend-test: ## バックエンドのテストを実行
 .PHONY: backend-tidy
 backend-tidy: ## go.mod を整理 (未使用依存削除など)
 	cd backend && go mod tidy
+
+.PHONY: backend-birthday
+backend-birthday: ## 誕生日通知バッチを手動実行 (テスト用、Mailhogへ送信)
+	cd backend && go run cmd/birthday/main.go

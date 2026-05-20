@@ -9,6 +9,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type EmailLog struct {
+	ID              uuid.UUID          `db:"id" json:"id"`
+	RecipientUserID uuid.UUID          `db:"recipient_user_id" json:"recipient_user_id"`
+	EmailType       string             `db:"email_type" json:"email_type"`
+	RecipientEmail  string             `db:"recipient_email" json:"recipient_email"`
+	Subject         string             `db:"subject" json:"subject"`
+	Status          string             `db:"status" json:"status"`
+	ErrorMessage    pgtype.Text        `db:"error_message" json:"error_message"`
+	SentAt          pgtype.Timestamptz `db:"sent_at" json:"sent_at"`
+	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
 type Group struct {
 	ID              uuid.UUID          `db:"id" json:"id"`
 	Name            string             `db:"name" json:"name"`
@@ -37,6 +49,24 @@ type InviteLink struct {
 	MaxUses         int32              `db:"max_uses" json:"max_uses"`
 	CurrentUses     int32              `db:"current_uses" json:"current_uses"`
 	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type Post struct {
+	ID           uuid.UUID          `db:"id" json:"id"`
+	GroupID      uuid.UUID          `db:"group_id" json:"group_id"`
+	AuthorUserID uuid.UUID          `db:"author_user_id" json:"author_user_id"`
+	Body         string             `db:"body" json:"body"`
+	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	DeletedAt    pgtype.Timestamptz `db:"deleted_at" json:"deleted_at"`
+}
+
+type PostImage struct {
+	ID        uuid.UUID          `db:"id" json:"id"`
+	PostID    uuid.UUID          `db:"post_id" json:"post_id"`
+	ImageUrl  string             `db:"image_url" json:"image_url"`
+	SortOrder int32              `db:"sort_order" json:"sort_order"`
+	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
 type Session struct {

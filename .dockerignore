@@ -1,0 +1,49 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# 環境変数 (絶対イメージに含めない)
+.env
+.env.local
+.env.*.local
+.env.production
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Backend
+backend/uploads/
+backend/eien-server
+backend/cookies*.txt
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# 誤ってルートに作られた残骸
+node_modules/
+package-lock.json
+
+# Logs
+*.log
+logs/
+
+# Docker
+docker-compose.yml
+docker-compose.override.yml
+
+# Tests / docs (本番イメージには不要)
+docs/
+*.md
+
+# 開発用テストファイル
+test1.png
+test*.jpg
+cookies*.txt
