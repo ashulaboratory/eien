@@ -89,8 +89,10 @@ type userResponse struct {
 	Birthday string `json:"birthday,omitempty"`
 }
 
+//ハンドラ関数 hにハンドラのポインタを渡す。
 func (h *Handler) Register(c echo.Context) error {
 	var req registerRequest
+	//リクエストボディをバインドする。受け取った構造体を書き換える必要が合うので&をつける。
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 	}
@@ -104,18 +106,20 @@ func (h *Handler) Register(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid birthday format (expected YYYY-MM-DD)"})
 	}
-
+	//パスワードをハッシュ化する。
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("bcrypt error: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal error"})
 	}
 
+	//ユーザーを作成する。
 	user, err := h.queries.CreateUser(c.Request().Context(), sqlc.CreateUserParams{
 		Email:        req.Email,
 		PasswordHash: string(hash),
 		Birthday:     pgtype.Date{Time: birthday, Valid: true},
 	})
+	//エラーが発生した場合はエラーを返す。(メールアドレスが重複している場合はエラーを返す。)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -131,6 +135,7 @@ func (h *Handler) Register(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create session"})
 	}
 
+	//ユーザーを返す。(成功レスポンス)
 	return c.JSON(http.StatusCreated, userResponse{
 		ID:       user.ID.String(),
 		Email:    user.Email,

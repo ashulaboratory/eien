@@ -1,11 +1,16 @@
 // API呼び出しのラッパー。Cookie 自動送信 + エラーハンドリング。
 
+// Errorを拡張してstatusも持てるようにしたクラス
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
     super(message);
+    this.status = status;
   }
 }
 
+//API呼び出しのラッパー関数
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { ...(init?.headers as Record<string, string>) };
   if (init?.body && !(init.body instanceof FormData) && !headers["Content-Type"]) {
@@ -28,11 +33,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new ApiError(res.status, msg);
   }
-
+  
+  //204の場合はundefinedを返す。
   if (res.status === 204) return undefined as T;
   return res.json();
 }
 
+//API呼び出しのラッパー関数をオブジェクトにまとめたもの
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>

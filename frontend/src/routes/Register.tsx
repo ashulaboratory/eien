@@ -8,13 +8,20 @@ export function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [birthday, setBirthday] = useState("");
+
+  //画面遷移するための関数
   const navigate = useNavigate();
+  //アプリ全体のキャッシュ管理者を取得
   const qc = useQueryClient();
 
+  //登録処理用のオブジェクト
   const register = useMutation({
+    //実行関数
     mutationFn: () =>
       api.post<User>("/api/auth/register", { email, password, birthday }),
+    //成功時の処理
     onSuccess: () => {
+      //auth関連のキャッシュは古い可能性があるから取り直す。
       qc.invalidateQueries({ queryKey: ["auth"] });
       navigate("/");
     },

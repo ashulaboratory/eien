@@ -269,8 +269,8 @@ OWASPベースの**標準レベル**を満たす。
 | --- | --- |
 | フロント言語 | TypeScript |
 | フロントビルド | Vite |
-| フロントUI | React 18 |
-| ルーティング | React Router v6 |
+| フロントUI | React 19 |
+| ルーティング | React Router v7 |
 | サーバ状態 | TanStack Query (React Query) |
 | スタイリング | Tailwind CSS |
 | フォーム | React Hook Form |
@@ -292,8 +292,8 @@ OWASPベースの**標準レベル**を満たす。
 
 - **TypeScript**：型安全。ポートフォリオでは事実上必須。
 - **Vite**：CRAは時代遅れ。Viteは起動・HMRが圧倒的に速い。
-- **React 18**：採用確定。
-- **React Router v6**：SPAルーティングのデファクト。
+- **React 19**：採用確定（実装時の最新版に合わせて当初の v18 から更新）。
+- **React Router v7**：SPAルーティングのデファクト（実装時の最新版に合わせて当初の v6 から更新）。
 - **TanStack Query**：API呼び出しのキャッシュ・再取得・楽観的UIをこれに任せる。useEffect+fetchの自前実装は地獄なので最初から導入。
 - **Tailwind CSS**：ユーティリティファースト。CSS命名で悩む時間がほぼゼロになる。Eienのようなレスポンシブ要件と相性◎。
 - **React Hook Form**：軽量・パフォーマンス◎。バリデーションも書きやすい。
