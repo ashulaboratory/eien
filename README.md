@@ -466,6 +466,7 @@ type ImageStore interface {
 
 - 要件定義（機能・非機能・技術スタック・スコープ外）：`[docs/requirements.md](docs/requirements.md)`
 - 設計書（ディレクトリ構成・DB・API・フロー・画面）：`[docs/design.md](docs/design.md)`
+- DB設計の判断記録（テーブル別の意図・横串の原則・既知の改善余地）：`[docs/db_design_rationale.md](docs/db_design_rationale.md)`
 - API仕様（OpenAPI 3.0）：`[docs/api/openapi.yaml](docs/api/openapi.yaml)`
 - セキュリティチェックリスト：`[docs/security_checklist.md](docs/security_checklist.md)`
 
