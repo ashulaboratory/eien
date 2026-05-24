@@ -1,1 +1,43 @@
 @import "tailwindcss";
+
+/* =========================================================
+ * Eien — Warm Album デザイントークン
+ * Tailwind v4 の @theme で CSS 変数を宣言すると、
+ * 自動的に bg-cream / text-terracotta / font-serif のようなクラスが使えるようになる。
+ * ========================================================= */
+@theme {
+  /* 背景・サーフェス */
+  --color-cream:        #FAF7F2;   /* 全体背景: クリーム */
+  --color-cream-soft:   #FDFBF7;   /* カード背景: ほぼ白だが少し暖色 */
+
+  /* テキスト */
+  --color-ink:          #2A2520;   /* 本文: 温かい黒 */
+  --color-ink-muted:    #7A716B;   /* 補助テキスト */
+
+  /* 罫線 */
+  --color-border-warm:  #E8E0D6;
+
+  /* アクセント (温色系) */
+  --color-terracotta:       #A8543C;  /* primary CTA */
+  --color-terracotta-dark:  #8B4030;  /* hover */
+  --color-honey:            #C9925A;  /* secondary accent */
+  --color-gold:             #D4A574;  /* 誕生日の特別な日 */
+
+  /* セマンティック (warm寄りに調整) */
+  --color-sage:         #5B7A4A;   /* 成功 */
+  --color-rose:         #A8453C;   /* エラー */
+
+  /* タイポグラフィ */
+  --font-serif: "Noto Serif JP", "Hiragino Mincho ProN", serif;
+  --font-sans:  "Noto Sans JP",  "Hiragino Sans", system-ui, sans-serif;
+}
+
+/* =========================================================
+ * ベーススタイル
+ * ========================================================= */
+body {
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}

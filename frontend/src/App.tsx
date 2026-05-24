@@ -1,3 +1,5 @@
+// アプリ全体のルーティング定義。
+// React Router でネスト構造を使い、認証チェック・共通レイアウトを親ルートに集約する。
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -14,14 +16,16 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 認証不要 */}
+        {/* 認証不要のルート: ログイン前でもアクセスできる */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/invite/:token" element={<InviteAccept />} />
 
-        {/* 認証必須 */}
+        {/* 認証必須のルート: ProtectedRoute で認証チェック → Layout で共通UI → 各ページ */}
         <Route element={<ProtectedRoute />}>
+          {/* 親ルートに ProtectedRoute を置くと、すべての子ルートに認証が適用される */}
           <Route element={<Layout />}>
+            {/* さらに Layout で共通の header/footer/nav を全ページに適用 */}
             <Route path="/" element={<Timeline />} />
             <Route path="/groups" element={<Groups />} />
             <Route path="/groups/new" element={<GroupNew />} />

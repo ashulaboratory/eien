@@ -4,13 +4,19 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { Group } from "../api/types";
 
+// GroupNew はグループ新規作成画面のコンポーネント。
+// グループ名、説明、自分の表示名を入力して POST /api/groups を呼ぶ。
+// 成功時は作成されたグループの詳細画面に遷移する。
 export function GroupNew() {
+  // フォーム入力値
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  // displayName はこのグループ内での自分の表示名 (Eien 固有の設計)
   const [displayName, setDisplayName] = useState("");
   const navigate = useNavigate();
   const qc = useQueryClient();
 
+  // グループ作成処理
   const create = useMutation({
     mutationFn: () =>
       api.post<Group>("/api/groups", {
@@ -19,7 +25,9 @@ export function GroupNew() {
         display_name: displayName,
       }),
     onSuccess: (data) => {
+      // グループ一覧のキャッシュを無効化 → 次回 useQuery で再取得
       qc.invalidateQueries({ queryKey: ["groups"] });
+      // 作成したグループの詳細画面に遷移
       navigate(`/groups/${data.id}`);
     },
   });
@@ -51,7 +59,7 @@ export function GroupNew() {
         </div>
 
         <div>
-          <label className="block text-sm text-gray-700 mb-1">説明（任意）</label>
+          <label className="block text-sm text-gray-700 mb-1">説明(任意)</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -60,6 +68,7 @@ export function GroupNew() {
           />
         </div>
 
+        {/* 表示名: グループごとに変えられる Eien 固有の設計 */}
         <div>
           <label className="block text-sm text-gray-700 mb-1">
             このグループでのあなたの表示名

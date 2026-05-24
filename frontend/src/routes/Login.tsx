@@ -1,3 +1,5 @@
+// Login は Eien のログイン画面 (Warm Album デザイン適用)。
+// メール+パスワードを /api/auth/login にPOSTし、成功すれば Cookie が発行されてホームへ。
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -13,60 +15,96 @@ export function Login() {
   const login = useMutation({
     mutationFn: () => api.post<User>("/api/auth/login", { email, password }),
     onSuccess: () => {
+      // ログイン成功 → useAuth キャッシュを無効化して再fetch → ホームへ遷移
       qc.invalidateQueries({ queryKey: ["auth"] });
       navigate("/");
     },
   });
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-cream p-4">
       <form
         onSubmit={(e) => {
           e.preventDefault();
           login.mutate();
         }}
-        className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md space-y-4"
+        className="
+          bg-cream-soft border border-border-warm rounded-2xl
+          p-10 w-full max-w-md space-y-5
+        "
       >
-        <h1 className="text-3xl font-bold text-blue-600">Eien</h1>
-        <p className="text-sm text-gray-600 mb-2">永遠の仲間とのSNS</p>
-
-        <div>
-          <label className="block text-sm text-gray-700 mb-1">メールアドレス</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        {/* タイトル: セリフで重厚さを出す。トラッキングを少し詰めて密度感 */}
+        <div className="text-center">
+          <h1 className="font-serif text-4xl text-ink tracking-tight">Eien</h1>
+          <p className="text-sm text-ink-muted mt-1">
+            永遠の仲間とのSNS
+          </p>
         </div>
 
-        <div>
-          <label className="block text-sm text-gray-700 mb-1">パスワード</label>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        <div className="border-t border-border-warm pt-5 space-y-4">
+          <div>
+            <label className="block text-sm text-ink-muted mb-1">
+              メールアドレス
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="
+                w-full px-3 py-2 bg-cream border border-border-warm rounded-lg
+                text-ink placeholder:text-ink-muted/60
+                focus:outline-none focus:border-terracotta
+                transition-colors
+              "
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm text-ink-muted mb-1">
+              パスワード
+            </label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="
+                w-full px-3 py-2 bg-cream border border-border-warm rounded-lg
+                text-ink
+                focus:outline-none focus:border-terracotta
+                transition-colors
+              "
+            />
+          </div>
+
+          {login.error && (
+            <p className="text-sm text-rose">
+              {(login.error as Error).message}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={login.isPending}
+            className="
+              w-full bg-terracotta text-cream-soft py-2.5 rounded-full
+              font-medium tracking-wide
+              hover:bg-terracotta-dark
+              disabled:opacity-50 disabled:cursor-not-allowed
+              transition-colors
+            "
+          >
+            {login.isPending ? "ログイン中…" : "ログイン"}
+          </button>
         </div>
 
-        {login.error && (
-          <p className="text-red-600 text-sm">{(login.error as Error).message}</p>
-        )}
-
-        <button
-          type="submit"
-          disabled={login.isPending}
-          className="w-full bg-blue-600 text-white py-2 rounded font-medium hover:bg-blue-700 disabled:opacity-50"
-        >
-          {login.isPending ? "ログイン中…" : "ログイン"}
-        </button>
-
-        <p className="text-sm text-gray-600 text-center pt-2">
+        <p className="text-sm text-ink-muted text-center">
           アカウントがない方は{" "}
-          <Link to="/register" className="text-blue-600 hover:underline">
+          <Link
+            to="/register"
+            className="text-terracotta hover:text-terracotta-dark underline underline-offset-2"
+          >
             こちら
           </Link>
         </p>

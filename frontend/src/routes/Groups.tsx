@@ -3,7 +3,11 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import type { Group, Paginated } from "../api/types";
 
+// Groups は自分が所属するグループ一覧画面のコンポーネント。
+// GET /api/groups で自分が入っている全グループを取得し、リスト表示する。
+// 各グループ項目をクリックすると /groups/:id (詳細画面) に遷移。
 export function Groups() {
+  // 所属グループ一覧を取得
   const { data, isLoading, error } = useQuery({
     queryKey: ["groups"],
     queryFn: () => api.get<Paginated<Group>>("/api/groups"),
@@ -21,9 +25,11 @@ export function Groups() {
         </Link>
       </div>
 
+      {/* ローディング / エラー */}
       {isLoading && <p className="text-gray-500">読み込み中…</p>}
       {error && <p className="text-red-600">エラー: {(error as Error).message}</p>}
 
+      {/* グループ0件の時 */}
       {data?.items?.length === 0 && (
         <div className="bg-white rounded-lg p-8 text-center text-gray-500">
           まだグループに参加していません。
@@ -32,6 +38,7 @@ export function Groups() {
         </div>
       )}
 
+      {/* グループ一覧: 各グループをカード形式で表示 */}
       {data?.items?.map((g) => (
         <Link
           key={g.id}
@@ -44,6 +51,7 @@ export function Groups() {
               {g.description && (
                 <p className="text-sm text-gray-600 mt-1">{g.description}</p>
               )}
+              {/* このグループでの自分の表示名 + 管理者バッジ */}
               <p className="text-xs text-gray-500 mt-2">
                 あなた: <span className="font-medium">{g.my_display_name}</span>
                 {g.my_role === "admin" && <span className="ml-1 text-blue-600">(管理者)</span>}
