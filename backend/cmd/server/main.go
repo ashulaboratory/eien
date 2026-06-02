@@ -46,9 +46,12 @@ func main() {
 	queries := sqlc.New(pool)
 
 	// 画像ストア
+	// 注意: PublicBase は認証付き配信エンドポイント (/api/uploads) を指す。
+	//       以前の e.Static("/uploads", ...) は廃止 (誰でも見れる状態だったため)。
+	uploadDir := "uploads"
 	imageStore := &post.LocalImageStore{
-		UploadDir:  "uploads",
-		PublicBase: cfg.PublicURL + "/uploads",
+		UploadDir:  uploadDir,
+		PublicBase: cfg.PublicURL + "/api/uploads",
 	}
 
 	// メーラー (開発: Mailhog, 本番: 後で Resend に差し替え予定)
@@ -69,7 +72,7 @@ func main() {
 	authHandler := auth.NewHandler(queries)
 	authMiddleware := auth.Middleware(queries)
 	groupHandler := group.NewHandler(pool, queries)
-	postHandler := post.NewHandler(pool, queries, imageStore)
+	postHandler := post.NewHandler(pool, queries, imageStore, uploadDir)
 
 	// Echo
 	e := echo.New()
@@ -82,14 +85,15 @@ func main() {
 			HTML5: true,
 			Skipper: func(c echo.Context) bool {
 				p := c.Request().URL.Path
-				return strings.HasPrefix(p, "/api/") || strings.HasPrefix(p, "/uploads/")
+				// 画像も認証付きの /api/uploads/ 配信に統一したので "/uploads/" 分岐は不要
+				return strings.HasPrefix(p, "/api/")
 			},
 		}))
 		log.Println("✓ serving frontend from frontend-dist/")
 	}
 
-	// 画像配信
-	e.Static("/uploads", "uploads")
+	// 画像配信は認証付きに変更したので e.Static は使わない
+	// → authenticated.GET("/uploads/:filename", postHandler.ServeImage) で配信 (後述)
 
 	// 認証不要のルート
 	e.POST("/api/auth/register", authHandler.Register)
@@ -106,15 +110,18 @@ func main() {
 	authenticated.GET("/groups", groupHandler.ListMine)
 	authenticated.GET("/groups/:id", groupHandler.Get)
 	authenticated.GET("/groups/:id/members", groupHandler.ListMembers)
+	authenticated.PATCH("/groups/:id/profile", groupHandler.UpdateProfile)
 	authenticated.POST("/groups/:id/invites", groupHandler.CreateInvite)
 	authenticated.POST("/invites/:token/accept", groupHandler.AcceptInvite)
 
-	// 投稿
-	authenticated.POST("/groups/:id/posts", postHandler.Create)
-	authenticated.GET("/groups/:id/posts", postHandler.ListByGroup)
-	authenticated.GET("/timeline", postHandler.Timeline)
-	authenticated.GET("/posts/:id", postHandler.Get)
+	// 投稿 (マイルストーン)
+	authenticated.POST("/posts", postHandler.Create)
+	authenticated.GET("/timeline", postHandler.Timeline) // ?group_id=, ?filter=mine 対応
 	authenticated.DELETE("/posts/:id", postHandler.Delete)
+	authenticated.DELETE("/posts/:id/shares/:groupId", postHandler.Unshare)
+
+	// 画像配信 (認証 + 認可: 投稿者本人 or シェア先グループのメンバーのみ)
+	authenticated.GET("/uploads/:filename", postHandler.ServeImage)
 
 	// 疎通確認用
 	e.GET("/api/ping", func(c echo.Context) error {

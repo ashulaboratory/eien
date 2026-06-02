@@ -24,10 +24,12 @@ export function GroupDetail() {
     queryFn: () => api.get<Paginated<GroupMember>>(`/api/groups/${groupId}/members`),
   });
 
-  // ③ このグループの投稿一覧を取得
+  // ③ このグループにシェアされたマイルストーン一覧を取得
+  //    (新しい多対多モデルでは /api/timeline?group_id=... を使う)
   const posts = useQuery({
     queryKey: ["groups", groupId, "posts"],
-    queryFn: () => api.get<Paginated<Post>>(`/api/groups/${groupId}/posts`),
+    queryFn: () =>
+      api.get<Paginated<Post>>(`/api/timeline?group_id=${groupId}`),
   });
 
   // 招待リンク発行のローカルステート
@@ -63,7 +65,7 @@ export function GroupDetail() {
       {/* アクションボタン: 投稿 / 招待リンク発行 */}
       <div className="flex gap-2">
         <Link
-          to={`/groups/${groupId}/posts/new`}
+          to={`/posts/new?group_id=${groupId}`}
           className="flex-1 bg-blue-600 text-white text-center py-2 rounded hover:bg-blue-700"
         >
           + 投稿する

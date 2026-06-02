@@ -46,20 +46,25 @@ export interface InviteCreated {
   max_uses: number;
 }
 
-// PostAuthor: 投稿の作成者情報 (グループ内の表示名・アイコン)
+// PostAuthor: マイルストーンの著者情報 (display_name は文脈によって表示元が変わる)
+//   - 統合タイムライン: 最初にシェアされたグループでの著者名 (0シェアなら最初に入ったグループの名)
+//   - 特定グループ表示: そのグループでの著者名
+//   - icon_url は今は backend が返していないので optional
 export interface PostAuthor {
   user_id: string;
   display_name: string;
-  icon_url: string;
+  icon_url?: string;
 }
 
-// Post: 投稿1件分
+// Post: マイルストーン1件分。
+// - group は廃止 (post_shares 多対多に変更)
+// - share_count はそのマイルストーンが今シェアされているグループ数
 export interface Post {
   id: string;
   body: string;
   images: string[];          // 画像URLの配列
   created_at: string;
-  group?: { id: string; name: string }; // タイムライン取得時のみ含まれる
+  share_count?: number;      // 統合タイムライン / マイ記録ビューでのみ含まれる
   author: PostAuthor;
 }
 

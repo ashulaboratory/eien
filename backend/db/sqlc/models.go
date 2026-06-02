@@ -53,7 +53,6 @@ type InviteLink struct {
 
 type Post struct {
 	ID           uuid.UUID          `db:"id" json:"id"`
-	GroupID      uuid.UUID          `db:"group_id" json:"group_id"`
 	AuthorUserID uuid.UUID          `db:"author_user_id" json:"author_user_id"`
 	Body         string             `db:"body" json:"body"`
 	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
@@ -67,6 +66,13 @@ type PostImage struct {
 	ImageUrl  string             `db:"image_url" json:"image_url"`
 	SortOrder int32              `db:"sort_order" json:"sort_order"`
 	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type PostShare struct {
+	ID       uuid.UUID          `db:"id" json:"id"`
+	PostID   uuid.UUID          `db:"post_id" json:"post_id"`
+	GroupID  uuid.UUID          `db:"group_id" json:"group_id"`
+	SharedAt pgtype.Timestamptz `db:"shared_at" json:"shared_at"`
 }
 
 type Session struct {

@@ -13,23 +13,27 @@ import (
 )
 
 const createPost = `-- name: CreatePost :one
-INSERT INTO posts (group_id, author_user_id, body)
-VALUES ($1, $2, $3)
-RETURNING id, group_id, author_user_id, body, created_at, updated_at, deleted_at
+
+INSERT INTO posts (author_user_id, body)
+VALUES ($1, $2)
+RETURNING id, author_user_id, body, created_at, updated_at, deleted_at
 `
 
 type CreatePostParams struct {
-	GroupID      uuid.UUID `db:"group_id" json:"group_id"`
 	AuthorUserID uuid.UUID `db:"author_user_id" json:"author_user_id"`
 	Body         string    `db:"body" json:"body"`
 }
 
+// =====================================================
+// マイルストーン (posts) クエリ群
+// group_id を持たない設計に書き換え (post_shares で多対多関係)
+// =====================================================
+// マイルストーンを新規作成 (シェア先は別途 post_shares に追加)
 func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, error) {
-	row := q.db.QueryRow(ctx, createPost, arg.GroupID, arg.AuthorUserID, arg.Body)
+	row := q.db.QueryRow(ctx, createPost, arg.AuthorUserID, arg.Body)
 	var i Post
 	err := row.Scan(
 		&i.ID,
-		&i.GroupID,
 		&i.AuthorUserID,
 		&i.Body,
 		&i.CreatedAt,
@@ -40,17 +44,17 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 }
 
 const getPost = `-- name: GetPost :one
-SELECT id, group_id, author_user_id, body, created_at, updated_at, deleted_at FROM posts
+SELECT id, author_user_id, body, created_at, updated_at, deleted_at FROM posts
 WHERE id = $1 AND deleted_at IS NULL
 LIMIT 1
 `
 
+// 単一マイルストーン取得 (削除済みは除外)
 func (q *Queries) GetPost(ctx context.Context, id uuid.UUID) (Post, error) {
 	row := q.db.QueryRow(ctx, getPost, id)
 	var i Post
 	err := row.Scan(
 		&i.ID,
-		&i.GroupID,
 		&i.AuthorUserID,
 		&i.Body,
 		&i.CreatedAt,
@@ -63,16 +67,15 @@ func (q *Queries) GetPost(ctx context.Context, id uuid.UUID) (Post, error) {
 const listGroupPosts = `-- name: ListGroupPosts :many
 SELECT
     p.id,
-    p.group_id,
     p.author_user_id,
     p.body,
     p.created_at,
-    gm.display_name AS author_display_name,
-    gm.icon_url AS author_icon_url
+    gm.display_name AS author_display_name
 FROM posts p
+INNER JOIN post_shares ps ON ps.post_id = p.id AND ps.group_id = $1
 INNER JOIN group_members gm
-    ON gm.user_id = p.author_user_id AND gm.group_id = p.group_id
-WHERE p.group_id = $1 AND p.deleted_at IS NULL
+    ON gm.user_id = p.author_user_id AND gm.group_id = ps.group_id
+WHERE p.deleted_at IS NULL
 ORDER BY p.created_at DESC
 LIMIT $2 OFFSET $3
 `
@@ -85,14 +88,14 @@ type ListGroupPostsParams struct {
 
 type ListGroupPostsRow struct {
 	ID                uuid.UUID          `db:"id" json:"id"`
-	GroupID           uuid.UUID          `db:"group_id" json:"group_id"`
 	AuthorUserID      uuid.UUID          `db:"author_user_id" json:"author_user_id"`
 	Body              string             `db:"body" json:"body"`
 	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	AuthorDisplayName string             `db:"author_display_name" json:"author_display_name"`
-	AuthorIconUrl     pgtype.Text        `db:"author_icon_url" json:"author_icon_url"`
 }
 
+// 特定グループにシェアされたマイルストーン (フィルタチップ「○○グループ」選択時)
+// 表示名はそのグループでの display_name を使う
 func (q *Queries) ListGroupPosts(ctx context.Context, arg ListGroupPostsParams) ([]ListGroupPostsRow, error) {
 	rows, err := q.db.Query(ctx, listGroupPosts, arg.GroupID, arg.Limit, arg.Offset)
 	if err != nil {
@@ -104,12 +107,73 @@ func (q *Queries) ListGroupPosts(ctx context.Context, arg ListGroupPostsParams) 
 		var i ListGroupPostsRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.GroupID,
 			&i.AuthorUserID,
 			&i.Body,
 			&i.CreatedAt,
 			&i.AuthorDisplayName,
-			&i.AuthorIconUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMyMilestones = `-- name: ListMyMilestones :many
+SELECT
+    p.id,
+    p.author_user_id,
+    p.body,
+    p.created_at,
+    (
+        SELECT gm.display_name
+        FROM group_members gm
+        WHERE gm.user_id = p.author_user_id
+        ORDER BY gm.joined_at ASC
+        LIMIT 1
+    ) AS author_display_name,
+    (SELECT COUNT(*) FROM post_shares WHERE post_id = p.id) AS share_count
+FROM posts p
+WHERE p.deleted_at IS NULL AND p.author_user_id = $1
+ORDER BY p.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListMyMilestonesParams struct {
+	AuthorUserID uuid.UUID `db:"author_user_id" json:"author_user_id"`
+	Limit        int32     `db:"limit" json:"limit"`
+	Offset       int32     `db:"offset" json:"offset"`
+}
+
+type ListMyMilestonesRow struct {
+	ID                uuid.UUID          `db:"id" json:"id"`
+	AuthorUserID      uuid.UUID          `db:"author_user_id" json:"author_user_id"`
+	Body              string             `db:"body" json:"body"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	AuthorDisplayName string             `db:"author_display_name" json:"author_display_name"`
+	ShareCount        int64              `db:"share_count" json:"share_count"`
+}
+
+// 自分のマイルストーン (シェア有無問わず、フィルタチップ「マイ記録」選択時)
+func (q *Queries) ListMyMilestones(ctx context.Context, arg ListMyMilestonesParams) ([]ListMyMilestonesRow, error) {
+	rows, err := q.db.Query(ctx, listMyMilestones, arg.AuthorUserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMyMilestonesRow
+	for rows.Next() {
+		var i ListMyMilestonesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AuthorUserID,
+			&i.Body,
+			&i.CreatedAt,
+			&i.AuthorDisplayName,
+			&i.ShareCount,
 		); err != nil {
 			return nil, err
 		}
@@ -124,44 +188,62 @@ func (q *Queries) ListGroupPosts(ctx context.Context, arg ListGroupPostsParams) 
 const listTimeline = `-- name: ListTimeline :many
 SELECT
     p.id,
-    p.group_id,
     p.author_user_id,
     p.body,
     p.created_at,
-    g.name AS group_name,
-    gm.display_name AS author_display_name,
-    gm.icon_url AS author_icon_url
+    COALESCE(
+        (
+            SELECT gm.display_name
+            FROM post_shares ps
+            JOIN group_members gm
+                ON gm.user_id = p.author_user_id AND gm.group_id = ps.group_id
+            WHERE ps.post_id = p.id
+            ORDER BY ps.shared_at ASC
+            LIMIT 1
+        ),
+        (
+            SELECT gm.display_name
+            FROM group_members gm
+            WHERE gm.user_id = p.author_user_id
+            ORDER BY gm.joined_at ASC
+            LIMIT 1
+        )
+    ) AS author_display_name,
+    (SELECT COUNT(*) FROM post_shares WHERE post_id = p.id) AS share_count
 FROM posts p
-INNER JOIN groups g ON g.id = p.group_id
-INNER JOIN group_members gm
-    ON gm.user_id = p.author_user_id AND gm.group_id = p.group_id
-WHERE p.group_id IN (
-    SELECT gm_timeline.group_id FROM group_members gm_timeline WHERE gm_timeline.user_id = $1
-)
-  AND p.deleted_at IS NULL
+WHERE p.deleted_at IS NULL
+  AND (
+    p.author_user_id = $1
+    OR p.id IN (
+      SELECT ps2.post_id FROM post_shares ps2
+      JOIN group_members gm2 ON gm2.group_id = ps2.group_id
+      WHERE gm2.user_id = $1
+    )
+  )
 ORDER BY p.created_at DESC
 LIMIT $2 OFFSET $3
 `
 
 type ListTimelineParams struct {
-	UserID uuid.UUID `db:"user_id" json:"user_id"`
-	Limit  int32     `db:"limit" json:"limit"`
-	Offset int32     `db:"offset" json:"offset"`
+	AuthorUserID uuid.UUID `db:"author_user_id" json:"author_user_id"`
+	Limit        int32     `db:"limit" json:"limit"`
+	Offset       int32     `db:"offset" json:"offset"`
 }
 
 type ListTimelineRow struct {
 	ID                uuid.UUID          `db:"id" json:"id"`
-	GroupID           uuid.UUID          `db:"group_id" json:"group_id"`
 	AuthorUserID      uuid.UUID          `db:"author_user_id" json:"author_user_id"`
 	Body              string             `db:"body" json:"body"`
 	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	GroupName         string             `db:"group_name" json:"group_name"`
-	AuthorDisplayName string             `db:"author_display_name" json:"author_display_name"`
-	AuthorIconUrl     pgtype.Text        `db:"author_icon_url" json:"author_icon_url"`
+	AuthorDisplayName interface{}        `db:"author_display_name" json:"author_display_name"`
+	ShareCount        int64              `db:"share_count" json:"share_count"`
 }
 
+// 統合タイムライン: 自分のマイルストーン + 所属グループにシェアされた他人のマイルストーン
+// 表示名は「最初にシェアされたグループでの著者名」、
+// 0シェアの場合は「著者が最初に参加したグループでの著者名」をフォールバック
 func (q *Queries) ListTimeline(ctx context.Context, arg ListTimelineParams) ([]ListTimelineRow, error) {
-	rows, err := q.db.Query(ctx, listTimeline, arg.UserID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listTimeline, arg.AuthorUserID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -171,13 +253,11 @@ func (q *Queries) ListTimeline(ctx context.Context, arg ListTimelineParams) ([]L
 		var i ListTimelineRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.GroupID,
 			&i.AuthorUserID,
 			&i.Body,
 			&i.CreatedAt,
-			&i.GroupName,
 			&i.AuthorDisplayName,
-			&i.AuthorIconUrl,
+			&i.ShareCount,
 		); err != nil {
 			return nil, err
 		}
@@ -199,6 +279,7 @@ type SoftDeletePostParams struct {
 	AuthorUserID uuid.UUID `db:"author_user_id" json:"author_user_id"`
 }
 
+// 自分の投稿のみ論理削除可能
 func (q *Queries) SoftDeletePost(ctx context.Context, arg SoftDeletePostParams) error {
 	_, err := q.db.Exec(ctx, softDeletePost, arg.ID, arg.AuthorUserID)
 	return err

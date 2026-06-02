@@ -263,6 +263,68 @@ func (h *Handler) ListMembers(c echo.Context) error {
 }
 
 // ----------------------------------------------------------
+// PATCH /api/groups/:id/profile
+// グループ内での自分のプロフィール(display_name / icon_url) を更新
+// 「Eien では同じ人がグループごとに違う名前を使える」設計の中核 API。
+// ----------------------------------------------------------
+
+type updateProfileRequest struct {
+	DisplayName string `json:"display_name"`     // 必須
+	IconURL     string `json:"icon_url,omitempty"` // 任意 (空文字なら未設定にする)
+}
+
+func (h *Handler) UpdateProfile(c echo.Context) error {
+	userID, _ := auth.UserIDFromContext(c.Request().Context())
+
+	groupID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid group id"})
+	}
+
+	var req updateProfileRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+	}
+	if req.DisplayName == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "display_name is required"})
+	}
+	if len(req.DisplayName) > 50 {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "display_name too long (max 50)"})
+	}
+
+	// メンバーシップ確認 (自グループのメンバーのみ自分のプロフィールを更新可)
+	isMember, err := h.checkMembership(c, userID, groupID)
+	if err != nil || !isMember {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "not a member of this group"})
+	}
+
+	// icon_url は空文字なら未設定 (Valid: false)、それ以外は値を保存
+	icon := pgtype.Text{Valid: false}
+	if req.IconURL != "" {
+		icon = pgtype.Text{String: req.IconURL, Valid: true}
+	}
+
+	updated, err := h.queries.UpdateGroupMemberProfile(c.Request().Context(), sqlc.UpdateGroupMemberProfileParams{
+		UserID:      userID,
+		GroupID:     groupID,
+		DisplayName: req.DisplayName,
+		IconUrl:     icon,
+	})
+	if err != nil {
+		log.Printf("UpdateGroupMemberProfile error: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal error"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"user_id":      updated.UserID.String(),
+		"group_id":     updated.GroupID.String(),
+		"display_name": updated.DisplayName,
+		"icon_url":     updated.IconUrl.String,
+		"role":         updated.Role,
+	})
+}
+
+// ----------------------------------------------------------
 // POST /api/groups/:id/invites
 // 招待リンクを発行 (グループメンバーが新規メンバーを招くため)
 // ----------------------------------------------------------

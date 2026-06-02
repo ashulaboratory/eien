@@ -11,6 +11,8 @@ import { GroupNew } from "./routes/GroupNew";
 import { GroupDetail } from "./routes/GroupDetail";
 import { PostNew } from "./routes/PostNew";
 import { InviteAccept } from "./routes/InviteAccept";
+import { Chat } from "./routes/Chat";
+import { Account } from "./routes/Account";
 
 function App() {
   return (
@@ -27,10 +29,13 @@ function App() {
           <Route element={<Layout />}>
             {/* さらに Layout で共通の header/footer/nav を全ページに適用 */}
             <Route path="/" element={<Timeline />} />
+            <Route path="/chat" element={<Chat />} />
+            {/* /posts/new は多対多モデルの新規マイルストーン作成画面 (グループ非依存) */}
+            <Route path="/posts/new" element={<PostNew />} />
             <Route path="/groups" element={<Groups />} />
             <Route path="/groups/new" element={<GroupNew />} />
             <Route path="/groups/:id" element={<GroupDetail />} />
-            <Route path="/groups/:id/posts/new" element={<PostNew />} />
+            <Route path="/account" element={<Account />} />
           </Route>
         </Route>
       </Routes>
